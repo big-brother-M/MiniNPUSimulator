@@ -658,7 +658,7 @@ def run_json_mode() -> None:
     data.json 분석 모드
     - 필터 로드 및 정규화
     - 패턴별 MAC 연산
-    - PASS/FAIL 판정
+    - PASS/ 판정
     - 결과 요약 출력
     """
     print_section("Mini NPU Simulator - data.json 분석 모드")
