@@ -747,7 +747,7 @@ def run_json_mode() -> None:
         print_case_result(result)
 
     print_summary(results)
-    run_performance_analysis(filters_by_size, repeat=10)
+    run_performance_analysis(filters_by_size, repeat=MEASUREMENT_REPEAT)
 
 
 def select_mode() -> str:
