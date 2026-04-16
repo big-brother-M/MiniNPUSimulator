@@ -2,7 +2,13 @@ import json
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
+from pattern_generator import (
+    generate_pattern_from_label,
+    validate_pattern_size,
+)
+
 EPSILON = 1e-9
+MEASUREMENT_REPEAT = 1000
 
 
 def print_section(title: str) -> None:
@@ -126,6 +132,76 @@ def input_matrix(size: int, title: str) -> List[List[float]]:
     return matrix
 
 
+def input_pattern_size() -> int:
+    """
+    사용자 입력 모드에서 사용할 정사각 행렬 크기 N을 입력받는다.
+    """
+    while True:
+        raw = input("크기 N 입력: ").strip()
+
+        try:
+            size = int(raw)
+        except ValueError:
+            print("입력 오류: 크기 N은 1 이상의 정수여야 합니다.")
+            continue
+
+        try:
+            validate_pattern_size(size)
+        except ValueError as e:
+            print(f"입력 오류: {e}")
+            continue
+
+        return size
+
+
+def select_matrix_input_method(title: str) -> str:
+    """
+    사용자 입력 모드에서 행렬 하나를 수동 입력할지 자동 생성할지 선택한다.
+    """
+    while True:
+        print(f"\n[{title} 입력 방식 선택]")
+        print("1. 수동 입력")
+        print("2. 자동 입력 (Cross/X 생성)")
+        choice = input("선택: ").strip()
+
+        if choice in ("1", "2"):
+            return choice
+
+        print("입력 오류: 1 또는 2만 입력할 수 있습니다.")
+
+
+def select_generated_pattern_label() -> str:
+    """
+    생성기에서 만들 패턴 라벨을 선택한다.
+    """
+    while True:
+        print("\n[생성할 패턴 선택]")
+        print("1. Cross")
+        print("2. X")
+        choice = input("선택: ").strip()
+
+        if choice == "1":
+            return "Cross"
+        if choice == "2":
+            return "X"
+
+        print("입력 오류: 1 또는 2만 입력할 수 있습니다.")
+
+
+def input_or_generate_matrix(size: int, title: str) -> List[List[float]]:
+    """
+    사용자 입력 모드에서 행렬 하나를 수동 입력하거나 자동 생성한다.
+    """
+    input_method = select_matrix_input_method(title)
+    if input_method == "1":
+        return input_matrix(size, title)
+
+    generated_label = select_generated_pattern_label()
+    matrix = generate_pattern_from_label(generated_label, size)
+    print(f"\n{title} 자동 생성 결과: {size}x{size} {generated_label}")
+    return matrix
+
+
 def print_matrix(matrix: List[List[float]], title: str) -> None:
     """
     행렬을 보기 좋게 출력한다.
@@ -144,7 +220,7 @@ def print_matrix(matrix: List[List[float]], title: str) -> None:
 def measure_mac_time(
     pattern: List[List[float]],
     filt: List[List[float]],
-    repeat: int = 10,
+    repeat: int = MEASUREMENT_REPEAT,
 ) -> Tuple[float, float]:
     """
     MAC 연산 1회의 평균 실행 시간(ms)을 측정한다.
@@ -164,32 +240,39 @@ def measure_mac_time(
     return last_score, avg_ms
 
 
-def print_performance_analysis_3x3(avg_mac_ms: float, avg_classification_ms: float) -> None:
+def print_performance_analysis_for_size(
+    size: int,
+    avg_mac_ms: float,
+    avg_classification_ms: float,
+) -> None:
     """
-    3x3 기준 성능 분석 결과를 표 형태로 출력한다.
+    단일 크기 N x N 기준 성능 분석 결과를 표 형태로 출력한다.
     avg_mac_ms: MAC 1회 평균 시간
     avg_classification_ms: 필터 A/B 두 번 비교를 포함한 판정 1회 평균 시간(근사)
     """
-    print("\n=== 성능 분석 (평균/10회) ===")
+    print(f"\n=== 성능 분석 ({MEASUREMENT_REPEAT}회 반복 측정, 1회 평균) ===")
     print(f"{'크기':<10}{'평균 시간(ms)':<20}{'연산 횟수(N²)':<15}")
     print("-" * 45)
-    print(f"{'3x3':<10}{avg_mac_ms:<20.6f}{9:<15}")
+    print(f"{f'{size}x{size}':<10}{avg_mac_ms:<20.6f}{size * size:<15}")
 
     print("\n참고:")
-    print("- 위 표의 평균 시간은 '단일 MAC 1회' 기준입니다.")
+    print(f"- 위 표의 평균 시간은 MAC를 {MEASUREMENT_REPEAT}번 반복 측정한 뒤, 1회당 평균으로 환산한 값입니다.")
     print("- 실제 판정 1회는 필터 A, B와 각각 비교하므로 MAC가 2번 수행됩니다.")
     print(f"- 현재 입력 기준 전체 판정 평균 시간은 약 {avg_classification_ms:.6f} ms 입니다.")
 
 
 def run_user_mode() -> None:
     """
-    사용자 입력(3x3) 모드
+    사용자 입력 모드
     """
-    print_section("Mini NPU Simulator - 사용자 입력 모드 (3x3)")
+    print_section("Mini NPU Simulator - 사용자 입력 모드")
 
-    filter_a = input_matrix(3, "필터 A")
-    filter_b = input_matrix(3, "필터 B")
-    pattern = input_matrix(3, "패턴")
+    size = input_pattern_size()
+    print(f"\n선택된 크기: {size}x{size}")
+
+    filter_a = input_or_generate_matrix(size, "필터 A")
+    filter_b = input_or_generate_matrix(size, "필터 B")
+    pattern = input_or_generate_matrix(size, "패턴")
 
     print_matrix(filter_a, "입력된 필터 A")
     print_matrix(filter_b, "입력된 필터 B")
@@ -199,8 +282,8 @@ def run_user_mode() -> None:
     score_b = mac(pattern, filter_b)
     result = decide_ab(score_a, score_b)
 
-    _, avg_a_ms = measure_mac_time(pattern, filter_a, repeat=10)
-    _, avg_b_ms = measure_mac_time(pattern, filter_b, repeat=10)
+    _, avg_a_ms = measure_mac_time(pattern, filter_a, repeat=MEASUREMENT_REPEAT)
+    _, avg_b_ms = measure_mac_time(pattern, filter_b, repeat=MEASUREMENT_REPEAT)
 
     avg_mac_ms = (avg_a_ms + avg_b_ms) / 2.0
     avg_classification_ms = avg_a_ms + avg_b_ms
@@ -208,13 +291,13 @@ def run_user_mode() -> None:
     print_section("MAC 결과")
     print(f"A 점수: {score_a}")
     print(f"B 점수: {score_b}")
-    print(f"연산 시간(평균/10회, 단일 MAC 기준): {avg_mac_ms:.6f} ms")
+    print(f"연산 시간({MEASUREMENT_REPEAT}회 반복 측정, 단일 MAC 1회 평균): {avg_mac_ms:.6f} ms")
     print(f"판정: {result}")
 
     if result == "판정 불가":
         print(f"판정 불가 사유: |A-B| < {EPSILON}")
 
-    print_performance_analysis_3x3(avg_mac_ms, avg_classification_ms)
+    print_performance_analysis_for_size(size, avg_mac_ms, avg_classification_ms)
 
 
 def load_json_file(path: str = "data.json") -> Dict[str, Any]:
@@ -322,41 +405,11 @@ def convert_matrix_to_float(matrix: List[List[Any]]) -> List[List[float]]:
     """
     return [[float(value) for value in row] for row in matrix]
 
-def generate_cross_pattern(n: int) -> List[List[float]]:
-    """
-    n x n Cross 패턴을 생성한다.
-    가운데 행 전체와 가운데 열 전체를 1로 둔다.
-    """
-    matrix = [[0.0 for _ in range(n)] for _ in range(n)]
-    mid = n // 2
-
-    for i in range(n):
-        matrix[i][mid] = 1.0
-
-    for j in range(n):
-        matrix[mid][j] = 1.0
-
-    return matrix
-
-
-def generate_x_pattern(n: int) -> List[List[float]]:
-    """
-    n x n X 패턴을 생성한다.
-    주대각선과 부대각선을 1로 둔다.
-    """
-    matrix = [[0.0 for _ in range(n)] for _ in range(n)]
-
-    for i in range(n):
-        matrix[i][i] = 1.0
-        matrix[i][n - 1 - i] = 1.0
-
-    return matrix
-
 
 def benchmark_single_size(
     pattern: List[List[float]],
     filt: List[List[float]],
-    repeat: int = 10,
+    repeat: int = MEASUREMENT_REPEAT,
 ) -> float:
     """
     주어진 pattern과 filt에 대해 MAC 1회의 평균 시간(ms)을 반환한다.
@@ -374,7 +427,7 @@ def print_performance_table(rows: List[Dict[str, Any]]) -> None:
         ...
     ]
     """
-    print_section("성능 분석 (평균/10회)")
+    print_section(f"성능 분석 ({MEASUREMENT_REPEAT}회 반복 측정, 1회 평균)")
     print(f"{'크기(NxN)':<15}{'평균 시간(ms)':<20}{'연산 횟수(N²)':<18}{'데이터 출처'}")
     print("-" * 70)
 
@@ -389,7 +442,7 @@ def print_performance_table(rows: List[Dict[str, Any]]) -> None:
 
 def run_performance_analysis(
     filters_by_size: Dict[int, Dict[str, List[List[float]]]],
-    repeat: int = 10,
+    repeat: int = MEASUREMENT_REPEAT,
 ) -> None:
     """
     3x3, 5x5, 13x13, 25x25 성능 분석을 수행한다.
@@ -399,7 +452,7 @@ def run_performance_analysis(
     rows: List[Dict[str, Any]] = []
 
     # 3x3은 JSON에 없을 수 있으므로 생성기로 직접 준비
-    cross_3 = generate_cross_pattern(3)
+    cross_3 = generate_pattern_from_label("Cross", 3)
     avg_3 = benchmark_single_size(cross_3, cross_3, repeat=repeat)
     rows.append({
         "size": 3,
@@ -420,7 +473,7 @@ def run_performance_analysis(
             continue
 
         cross_filter = filters_by_size[size]["Cross"]
-        cross_pattern = generate_cross_pattern(size)
+        cross_pattern = generate_pattern_from_label("Cross", size)
 
         avg_ms = benchmark_single_size(cross_pattern, cross_filter, repeat=repeat)
         rows.append({
@@ -436,7 +489,7 @@ def print_performance_table_with_missing_support(rows: List[Dict[str, Any]]) -> 
     """
     missing filter 상황까지 포함해서 성능 표를 출력한다.
     """
-    print_section("성능 분석 (평균/10회)")
+    print_section(f"성능 분석 ({MEASUREMENT_REPEAT}회 반복 측정, 1회 평균)")
     print(f"{'크기(NxN)':<15}{'평균 시간(ms)':<20}{'연산 횟수(N²)':<18}{'데이터 출처'}")
     print("-" * 70)
 
@@ -453,7 +506,7 @@ def print_performance_table_with_missing_support(rows: List[Dict[str, Any]]) -> 
         print(f"{size_text:<15}{avg_ms_text:<20}{ops_text:<18}{source_text}")
 
     print("\n참고:")
-    print("- 위 시간은 I/O를 제외한 'MAC 함수 호출 구간'만 반복 측정한 평균값입니다.")
+    print(f"- 위 시간은 I/O를 제외한 'MAC 함수 호출 구간'을 {MEASUREMENT_REPEAT}번 반복 측정한 뒤, 1회 평균으로 환산한 값입니다.")
     print("- MAC 1회는 n x n 원소를 모두 방문하므로 연산 횟수는 N²입니다.")
     print("- 실제 분류는 Cross 필터와 X 필터 각각에 대해 MAC를 수행하므로, 판정 1회에는 MAC가 2번 사용됩니다.")
 
@@ -700,13 +753,13 @@ def run_json_mode() -> None:
 def select_mode() -> str:
     """
     사용자에게 실행 모드를 입력받는다.
-    1: 사용자 입력(3x3)
+    1: 사용자 입력
     2: data.json 분석
     """
     while True:
         print_section("Mini NPU Simulator")
         print("[모드 선택]")
-        print("1. 사용자 입력 (3x3)")
+        print("1. 사용자 입력")
         print("2. data.json 분석")
         choice = input("선택: ").strip()
 
@@ -726,4 +779,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n입력이 취소되었습니다. 프로그램을 종료합니다.")

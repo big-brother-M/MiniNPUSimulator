@@ -1,26 +1,6 @@
 import json
 
-
-def generate_cross_pattern(n):
-    matrix = [[0 for _ in range(n)] for _ in range(n)]
-    mid = n // 2
-
-    for i in range(n):
-        matrix[i][mid] = 1
-    for j in range(n):
-        matrix[mid][j] = 1
-
-    return matrix
-
-
-def generate_x_pattern(n):
-    matrix = [[0 for _ in range(n)] for _ in range(n)]
-
-    for i in range(n):
-        matrix[i][i] = 1
-        matrix[i][n - 1 - i] = 1
-
-    return matrix
+from pattern_generator import generate_cross_pattern, generate_x_pattern
 
 
 def matrix_to_json_string(matrix, indent_level=0):
@@ -29,7 +9,13 @@ def matrix_to_json_string(matrix, indent_level=0):
 
     lines = ["["]
     for i, row in enumerate(matrix):
-        row_str = ", ".join(json.dumps(value, ensure_ascii=False) for value in row)
+        row_values = []
+        for value in row:
+            if isinstance(value, float) and value.is_integer():
+                row_values.append(int(value))
+            else:
+                row_values.append(value)
+        row_str = ", ".join(json.dumps(value, ensure_ascii=False) for value in row_values)
         comma = "," if i < len(matrix) - 1 else ""
         lines.append(f"{row_indent}[{row_str}]{comma}")
     lines.append(f"{indent}]")
