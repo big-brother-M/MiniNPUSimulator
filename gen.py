@@ -29,11 +29,15 @@ def matrix_to_json_string(matrix, indent_level=0):
 
     lines = ["["]
     for i, row in enumerate(matrix):
-        row_str = ", ".join(str(value) for value in row)
+        row_str = ", ".join(json.dumps(value, ensure_ascii=False) for value in row)
         comma = "," if i < len(matrix) - 1 else ""
         lines.append(f"{row_indent}[{row_str}]{comma}")
     lines.append(f"{indent}]")
     return "\n".join(lines)
+
+
+def generate_all_ones_pattern(n: int):
+    return [[1 for _ in range(n)] for _ in range(n)]
 
 
 def build_data():
@@ -60,6 +64,49 @@ def build_data():
             "input": x_pattern,
             "expected": "x"
         }
+
+    # ---- intentional fail cases (5x5 only) ----
+    cross_5 = generate_cross_pattern(5)
+
+    data["patterns"]["size_5_3"] = {
+        "input": cross_5,
+        "expected": "x",
+        "note": "intentional_fail_expected_mismatch"
+    }
+
+    data["patterns"]["size_5_4"] = {
+        "input": generate_all_ones_pattern(5),
+        "expected": "+",
+        "note": "intentional_fail_undecided"
+    }
+
+    data["patterns"]["size_5_5"] = {
+        "input": [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+        ],
+        "expected": "+",
+        "note": "intentional_fail_size_mismatch"
+    }
+
+    data["patterns"]["size_5_6"] = {
+        "input": cross_5,
+        "expected": "triangle",
+        "note": "intentional_fail_unknown_label"
+    }
+
+    data["patterns"]["size_5_7"] = {
+        "input": [
+            [0, 0, 1, 0, 0],
+            [0, 0, "a", 0, 0],
+            [1, 1, 1, 1, 1],
+            [0, 0, 1, 0, 0],
+            [0, 0, 1, 0, 0]
+        ],
+        "expected": "+",
+        "note": "intentional_fail_non_numeric"
+    }
 
     return data
 
